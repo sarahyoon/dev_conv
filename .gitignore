@@ -5,11 +5,13 @@
 # Python 컴파일 파일 및 캐시
 __pycache__/
 *.py[cod]
+*$py.class
 
 # 가상환경 폴더 (사용 중이라면)
 .venv
 venv/
 env/
+ENV/
 
 # 운영체제 시스템 파일
 .DS_Store
@@ -17,3 +19,26 @@ Thumbs.db
 
 # 대용량 데이터 파일 무시
 *.csv
+
+# 로그 파일
+*.log
+
+# 생성된 플롯과 결과 파일
+anomaly_results.png
+anomaly_results_*.csv
+strong_anomalies_*.csv
+
+# pytest cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE 설정
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Model files
+*.h5
+*.keras
