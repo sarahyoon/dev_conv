@@ -10,7 +10,7 @@ import pandas as pd
 import logging
 import json
 
-from .config import LLMConfig
+from .config import LLMConfig, DetectionConfig
 
 
 logger = logging.getLogger(__name__)
@@ -19,14 +19,16 @@ logger = logging.getLogger(__name__)
 class ExplanationGenerator:
     """Generates explanations for anomalies using LLM."""
     
-    def __init__(self, config: LLMConfig):
+    def __init__(self, config: LLMConfig, detection_config: Optional[DetectionConfig] = None):
         """
         Initialize ExplanationGenerator.
         
         Args:
             config: LLM configuration object.
+            detection_config: Optional detection configuration for threshold information.
         """
         self.config = config
+        self.detection_config = detection_config or DetectionConfig()
         
     def _create_context_data(
         self,
@@ -54,7 +56,7 @@ class ExplanationGenerator:
             'TotalCost': float(data_row['TotalCost']),
             'Decrease_Rate': float(data_row['pct_change']),
             'LSTM_MSE': float(data_row['mse']),
-            'Decrease_Threshold': self.config.api_key if hasattr(self.config, 'decrease_threshold') else -30.0
+            'Decrease_Threshold': self.detection_config.decrease_threshold * 100
         }
         
         return context

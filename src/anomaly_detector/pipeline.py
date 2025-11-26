@@ -46,7 +46,7 @@ class AnomalyDetectionPipeline:
         self.data_preprocessor = DataPreprocessor(self.config.data)
         self.model = LSTMAutoencoder(self.config.model)
         self.detector = AnomalyDetector(self.config.detection)
-        self.explainer = ExplanationGenerator(self.config.llm)
+        self.explainer = ExplanationGenerator(self.config.llm, self.config.detection)
         self.visualizer = AnomalyVisualizer()
         
         # State variables
@@ -194,7 +194,19 @@ class AnomalyDetectionPipeline:
         
         # Detect decrease anomalies
         pct_change = ts_test.pct_change()
-        decrease_flags = self.detector.detect_decrease_anomalies(ts_test).values
+        decrease_flags_series = self.detector.detect_decrease_anomalies(ts_test)
+        
+        # Align the flags - both should have same length and handle NaN in pct_change
+        # Fill NaN with False for the first element
+        decrease_flags = decrease_flags_series.fillna(False).values
+        
+        # Ensure both arrays are same length
+        min_len = min(len(lstm_flags), len(decrease_flags))
+        lstm_flags = lstm_flags[:min_len]
+        decrease_flags = decrease_flags[:min_len]
+        ts_test = ts_test[:min_len]
+        pct_change = pct_change[:min_len]
+        test_errors = test_errors[:min_len]
         
         # Create anomaly DataFrame
         self.anomaly_df = self.detector.create_anomaly_dataframe(
