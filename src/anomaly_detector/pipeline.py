@@ -148,6 +148,42 @@ class AnomalyDetectionPipeline:
         
         logger.info("Model training completed")
     
+    def _align_detection_flags(
+        self,
+        lstm_flags: np.ndarray,
+        decrease_flags_series: pd.Series,
+        ts_test: pd.Series,
+        pct_change: pd.Series,
+        test_errors: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray, pd.Series, pd.Series, np.ndarray]:
+        """
+        Align detection flags and data to ensure consistent lengths.
+        
+        This handles cases where pct_change may have NaN values that affect alignment.
+        
+        Args:
+            lstm_flags: LSTM anomaly flags.
+            decrease_flags_series: Decrease anomaly flags as series (may contain NaN).
+            ts_test: Test time series.
+            pct_change: Percentage change series (may contain NaN).
+            test_errors: LSTM reconstruction errors.
+            
+        Returns:
+            Tuple of aligned (lstm_flags, decrease_flags, ts_test, pct_change, test_errors).
+        """
+        # Fill NaN with False for the first element in decrease flags
+        decrease_flags = decrease_flags_series.fillna(False).values
+        
+        # Ensure all arrays have the same length
+        min_len = min(len(lstm_flags), len(decrease_flags))
+        lstm_flags = lstm_flags[:min_len]
+        decrease_flags = decrease_flags[:min_len]
+        ts_test = ts_test[:min_len]
+        pct_change = pct_change[:min_len]
+        test_errors = test_errors[:min_len]
+        
+        return lstm_flags, decrease_flags, ts_test, pct_change, test_errors
+    
     def detect_anomalies(
         self,
         X_train: np.ndarray,
@@ -196,17 +232,15 @@ class AnomalyDetectionPipeline:
         pct_change = ts_test.pct_change()
         decrease_flags_series = self.detector.detect_decrease_anomalies(ts_test)
         
-        # Align the flags - both should have same length and handle NaN in pct_change
-        # Fill NaN with False for the first element
-        decrease_flags = decrease_flags_series.fillna(False).values
-        
-        # Ensure both arrays are same length
-        min_len = min(len(lstm_flags), len(decrease_flags))
-        lstm_flags = lstm_flags[:min_len]
-        decrease_flags = decrease_flags[:min_len]
-        ts_test = ts_test[:min_len]
-        pct_change = pct_change[:min_len]
-        test_errors = test_errors[:min_len]
+        # Align all flags and data to ensure consistent lengths
+        lstm_flags, decrease_flags, ts_test, pct_change, test_errors = \
+            self._align_detection_flags(
+                lstm_flags,
+                decrease_flags_series,
+                ts_test,
+                pct_change,
+                test_errors
+            )
         
         # Create anomaly DataFrame
         self.anomaly_df = self.detector.create_anomaly_dataframe(
